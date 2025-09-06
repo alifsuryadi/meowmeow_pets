@@ -5,7 +5,9 @@ export default function Header() {
     <header className="fixed top-0 left-0 right-0 z-10 bg-background/80 backdrop-blur-sm border-b">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <h1 className="text-2xl font-bold tracking-tighter">MEOWMEOW</h1>
-        <ConnectButton />
+        <div className="hover:cursor-pointer">
+          <ConnectButton />
+        </div>
       </div>
     </header>
   );
