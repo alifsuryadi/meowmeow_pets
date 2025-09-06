@@ -181,7 +181,7 @@ public fun adopt_pet(
     name: String,
     clock: &Clock,
     ctx: &mut TxContext
-) {
+): Pet {
     let current_time = clock.timestamp_ms();
 
     let pet_stats = PetStats {
@@ -213,7 +213,7 @@ public fun adopt_pet(
         adopted_at: pet.adopted_at
     });
 
-    transfer::public_transfer(pet, ctx.sender());
+    pet
 }
 
 
@@ -358,13 +358,13 @@ public fun wake_up_pet(pet: &mut Pet, clock: &Clock) {
 
 
 
-public fun mint_accessory(ctx: &mut TxContext) {
+public fun mint_accessory(ctx: &mut TxContext): PetAccessory {
     let accessory = PetAccessory {
         id: object::new(ctx),
         name: string::utf8(b"cool glasses"),
         image_url: string::utf8(ACCESSORY_GLASSES_IMAGE_URL)
     };
-    transfer::public_transfer(accessory, ctx.sender());
+    accessory
 }
 
 public fun equip_accessory(pet: &mut Pet, accessory: PetAccessory) {
@@ -380,7 +380,7 @@ public fun equip_accessory(pet: &mut Pet, accessory: PetAccessory) {
     emit_action(pet, b"equipped_item");
 }
 
-public fun unequip_accessory(pet: &mut Pet, ctx: &mut TxContext) {
+public fun unequip_accessory(pet: &mut Pet, _ctx: &mut TxContext): PetAccessory {
     assert!(!is_sleeping(pet), E_PET_IS_ASLEEP);
 
     let key = string::utf8(EQUIPPED_ITEM_KEY);
@@ -391,8 +391,8 @@ public fun unequip_accessory(pet: &mut Pet, ctx: &mut TxContext) {
     // Update image
     update_pet_image(pet);
 
-    transfer::transfer(accessory, ctx.sender());
     emit_action(pet, b"unequipped_item");
+    accessory
 }
 
 
