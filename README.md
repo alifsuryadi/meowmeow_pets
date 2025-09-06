@@ -95,6 +95,29 @@ sui client publish
 
 3. Update the frontend configuration with the deployed package ID
 
+### Using Pre-deployed Contract
+
+You can use the already deployed contract on Sui testnet:
+
+**Package ID**: `0x2e6e2b443734e7a67740318ea186a4f9abb3fa0043ea43ab5d91be5c96c2e7c4`
+
+**Contract Explorer**: [View on SuiScan](https://suiscan.xyz/testnet/object/0x2e6e2b443734e7a67740318ea186a4f9abb3fa0043ea43ab5d91be5c96c2e7c4/tx-blocks)
+
+**Created Objects**:
+- Pet Display: [`0x46076be19ddcbcb0ed2bd5083a64105ca8c30817b7ca7eb370ee6a5ce15468cb`](https://suiscan.xyz/testnet/object/0x46076be19ddcbcb0ed2bd5083a64105ca8c30817b7ca7eb370ee6a5ce15468cb)
+- Publisher: [`0x85ff0a46cbee9b3a879beb2c82fa6b6c17c4fede3e11c5028f1d889232dee21e`](https://suiscan.xyz/testnet/object/0x85ff0a46cbee9b3a879beb2c82fa6b6c17c4fede3e11c5028f1d889232dee21e)
+- Upgrade Cap: [`0xc231b48bb9085b5b450b6c16d73977562128b4b8db8a8a45dc0575dfb57d86e2`](https://suiscan.xyz/testnet/object/0xc231b48bb9085b5b450b6c16d73977562128b4b8db8a8a45dc0575dfb57d86e2)
+- PetAccessory Display: [`0xcbed6735aed14c03d0a14e2f6683dfcfc652fb208c0ce1b62a34245dd859b59f`](https://suiscan.xyz/testnet/object/0xcbed6735aed14c03d0a14e2f6683dfcfc652fb208c0ce1b62a34245dd859b59f)
+
+**Transaction Digest**: `J6cVwXkJKQUo5XMzrbekHrwreHv22CSqS8aA1wRxzQKv`
+
+To use this contract in your frontend, update your `.env` file:
+
+```env
+VITE_PACKAGE_ID=0x2e6e2b443734e7a67740318ea186a4f9abb3fa0043ea43ab5d91be5c96c2e7c4
+VITE_NETWORK=testnet
+```
+
 ### Contract Features
 
 - **Pet NFT**: Each pet is a unique NFT with dynamic metadata
