@@ -28,10 +28,12 @@ export function useMutateAdoptPet() {
       if (!currentAccount) throw new Error("No connected account");
 
       const tx = new Transaction();
-      tx.moveCall({
+      const [pet] = tx.moveCall({
         target: `${PACKAGE_ID}::${MODULE_NAME}::adopt_pet`,
         arguments: [tx.pure.string(name), tx.object(CLOCK_ID)],
       });
+      
+      tx.transferObjects([pet], currentAccount.address);
 
       const result = await signAndExecute({ transaction: tx });
       const response = await suiClient.waitForTransaction({
