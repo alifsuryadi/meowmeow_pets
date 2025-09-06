@@ -1,0 +1,11 @@
+[build]
+  # Build command untuk Vite + TypeScript
+  command = "npm run build"
+  # Output folder untuk Vite
+  publish = "dist"
+
+# SPA redirect - semua routes diarahkan ke index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
