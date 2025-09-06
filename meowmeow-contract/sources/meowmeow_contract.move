@@ -1,4 +1,4 @@
-module 0x0::nexui_contract;
+module 0x0::meowmeow_contract;
 
 use std::string::{Self, String};
 use sui::{clock::Clock, display, dynamic_field, event, package};
@@ -93,7 +93,7 @@ fun get_game_balance(): GameBalance {
 }
 
 
-public struct NEXUI_CONTRACT has drop {}
+public struct MEOWMEOW_CONTRACT has drop {}
 
 public struct Pet has key, store {
     id: UID,
@@ -138,7 +138,7 @@ public struct PetAction has copy, drop {
     hunger: u8
 }
 
-fun init(witness: NEXUI_CONTRACT, ctx: &mut TxContext) {
+fun init(witness: MEOWMEOW_CONTRACT, ctx: &mut TxContext) {
     let publisher = package::claim(witness, ctx);
 
     let pet_keys = vector[
@@ -460,5 +460,5 @@ public fun is_sleeping(pet: &Pet): bool {
 // === Test-Only Functions ===
 #[test_only]
 public fun init_for_testing(ctx: &mut TxContext) {
-    init(NEXUI_CONTRACT {}, ctx);
+    init(MEOWMEOW_CONTRACT {}, ctx);
 }

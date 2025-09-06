@@ -1,12 +1,12 @@
 [package]
-name = "nexui_contract"
+name = "meowmeow_contract"
 edition = "2024.beta"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
 
 [addresses]
-nexui_contract = "0x0"
+meowmeow_contract = "0x0"
 
 [dev-dependencies]
 
