@@ -9,31 +9,34 @@ import { toast } from "sonner";
 
 import { queryKeyOwnedPet } from "./useQueryOwnedPet";
 import { MODULE_NAME, PACKAGE_ID } from "@/constants/contract";
-import { queryKeyOwnedAccessories } from "./useQueryOwnedAccessories";
 
-const mutateKeyMintAccessory = ["mutate", "mint-accessory"];
+const mutateKeyBegForCoins = ["mutate", "beg-for-coins"];
 
-export function useMutateMintAccessory() {
+type UseMutateBegForCoinsParams = {
+  petId: string;
+};
+
+export function useMutateBegForCoins() {
   const currentAccount = useCurrentAccount();
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const suiClient = useSuiClient();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationKey: mutateKeyMintAccessory,
-    mutationFn: async () => {
+    mutationKey: mutateKeyBegForCoins,
+    mutationFn: async ({ petId }: UseMutateBegForCoinsParams) => {
       if (!currentAccount) throw new Error("No connected account");
 
       const tx = new Transaction();
-      const [accessory] = tx.moveCall({
-        target: `${PACKAGE_ID}::${MODULE_NAME}::mint_accessory`,
+      tx.moveCall({
+        target: `${PACKAGE_ID}::${MODULE_NAME}::beg_for_coins`,
+        arguments: [tx.object(petId)],
       });
-      tx.transferObjects([accessory], tx.pure.address(currentAccount.address));
 
       const { digest } = await signAndExecute({ transaction: tx });
       const response = await suiClient.waitForTransaction({
         digest,
-        options: { showEffects: true, showEvents: true },
+        options: { showEffects: true },
       });
       if (response?.effects?.status.status === "failure")
         throw new Error(response.effects.status.error);
@@ -41,13 +44,12 @@ export function useMutateMintAccessory() {
       return response;
     },
     onSuccess: (response) => {
-      toast.success(`Accessory minted successfully! Tx: ${response.digest}`);
+      toast.success(`Your pet begged for coins! Tx: ${response.digest}`);
       queryClient.invalidateQueries({ queryKey: queryKeyOwnedPet() });
-      queryClient.invalidateQueries({ queryKey: queryKeyOwnedAccessories });
     },
     onError: (error) => {
-      console.error("Error feeding pet:", error);
-      toast.error(`Error minting accessory: ${error.message}`);
+      console.error("Error begging for coins:", error);
+      toast.error(`Error begging for coins: ${error.message}`);
     },
   });
 }

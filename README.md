@@ -99,17 +99,18 @@ sui client publish
 
 You can use the already deployed contract on Sui testnet:
 
-**Package ID**: `0x2e6e2b443734e7a67740318ea186a4f9abb3fa0043ea43ab5d91be5c96c2e7c4`
+**Package ID**: `0xb1d820691672e1df7a1a826d632274c199df363b230fc4f223244df8f3219e83`
 
-**Contract Explorer**: [View on SuiScan](https://suiscan.xyz/testnet/object/0x2e6e2b443734e7a67740318ea186a4f9abb3fa0043ea43ab5d91be5c96c2e7c4/tx-blocks)
+**Contract Explorer**: [View on SuiScan](https://suiscan.xyz/testnet/object/0xb1d820691672e1df7a1a826d632274c199df363b230fc4f223244df8f3219e83/tx-blocks)
 
 **Created Objects**:
-- Pet Display: [`0x46076be19ddcbcb0ed2bd5083a64105ca8c30817b7ca7eb370ee6a5ce15468cb`](https://suiscan.xyz/testnet/object/0x46076be19ddcbcb0ed2bd5083a64105ca8c30817b7ca7eb370ee6a5ce15468cb)
-- Publisher: [`0x85ff0a46cbee9b3a879beb2c82fa6b6c17c4fede3e11c5028f1d889232dee21e`](https://suiscan.xyz/testnet/object/0x85ff0a46cbee9b3a879beb2c82fa6b6c17c4fede3e11c5028f1d889232dee21e)
-- Upgrade Cap: [`0xc231b48bb9085b5b450b6c16d73977562128b4b8db8a8a45dc0575dfb57d86e2`](https://suiscan.xyz/testnet/object/0xc231b48bb9085b5b450b6c16d73977562128b4b8db8a8a45dc0575dfb57d86e2)
-- PetAccessory Display: [`0xcbed6735aed14c03d0a14e2f6683dfcfc652fb208c0ce1b62a34245dd859b59f`](https://suiscan.xyz/testnet/object/0xcbed6735aed14c03d0a14e2f6683dfcfc652fb208c0ce1b62a34245dd859b59f)
 
-**Transaction Digest**: `J6cVwXkJKQUo5XMzrbekHrwreHv22CSqS8aA1wRxzQKv`
+- Pet Display: [`0x40e85fdd74f24985995f5d418193f9197335ee06d8dac72740082d3334b6e1bb`](https://suiscan.xyz/testnet/object/0x40e85fdd74f24985995f5d418193f9197335ee06d8dac72740082d3334b6e1bb)
+- Publisher: [`0xbe933f159308ca4490a6ee47e867f37d40f422f4d53bac788165a5877e3e29da`](https://suiscan.xyz/testnet/object/0xbe933f159308ca4490a6ee47e867f37d40f422f4d53bac788165a5877e3e29da)
+- Upgrade Cap: [`0xcdc667bbe208c9dc666d68b893a3a9d1ed2f905a12afc7fe18cb6fbddb0410b1`](https://suiscan.xyz/testnet/object/0xcdc667bbe208c9dc666d68b893a3a9d1ed2f905a12afc7fe18cb6fbddb0410b1)
+- PetAccessory Display: [`0xfce3941f1e895fb382259bb4c7031e9bb07d53e686f74c778f4a3bbc52a44d46`](https://suiscan.xyz/testnet/object/0xfce3941f1e895fb382259bb4c7031e9bb07d53e686f74c778f4a3bbc52a44d46)
+
+**Transaction Digest**: `BScr39hZVYmbaiPAUTimfU1HrHkcE5Hiez58ZncWT6oG`
 
 To use this contract in your frontend, update your `.env` file:
 
