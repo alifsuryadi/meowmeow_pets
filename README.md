@@ -115,7 +115,7 @@ You can use the already deployed contract on Sui testnet:
 To use this contract in your frontend, update your `.env` file:
 
 ```env
-VITE_PACKAGE_ID=0x2e6e2b443734e7a67740318ea186a4f9abb3fa0043ea43ab5d91be5c96c2e7c4
+VITE_PACKAGE_ID=0xb1d820691672e1df7a1a826d632274c199df363b230fc4f223244df8f3219e83
 VITE_NETWORK=testnet
 ```
 
