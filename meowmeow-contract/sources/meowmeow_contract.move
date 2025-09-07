@@ -304,6 +304,17 @@ public fun check_and_level_up(pet: &mut Pet) {
 }
 
 
+public fun beg_for_coins(pet: &mut Pet) {
+    assert!(!is_sleeping(pet), E_PET_IS_ASLEEP);
+
+    // Give free coins when pet is stuck (no coins, low happiness, low hunger)
+    if (pet.game_data.coins < 5 && pet.stats.happiness < 20 && pet.stats.hunger < 20) {
+        pet.game_data.coins = pet.game_data.coins + 10;
+        emit_action(pet, b"begged_for_coins");
+    }
+}
+
+
 public fun let_pet_sleep(pet: &mut Pet, clock: &Clock) {
     assert!(!is_sleeping(pet), E_PET_IS_ALREADY_ASLEEP);
 

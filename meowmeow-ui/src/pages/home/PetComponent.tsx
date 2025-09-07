@@ -11,6 +11,7 @@ import {
   BriefcaseIcon,
   ZapIcon,
   ChevronUpIcon,
+  HandIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ import { useMutateLetPetSleep } from "@/hooks/useMutateLetPetSleep";
 import { useMutatePlayWithPet } from "@/hooks/useMutatePlayWithPet";
 import { useMutateWakeUpPet } from "@/hooks/useMutateWakeUpPet";
 import { useMutateWorkForCoins } from "@/hooks/useMutateWorkForCoins";
+import { useMutateBegForCoins } from "@/hooks/useMutateBegForCoins";
 import { useQueryGameBalance } from "@/hooks/useQueryGameBalance";
 
 import type { PetStruct } from "@/types/Pet";
@@ -59,6 +61,8 @@ export default function PetComponent({ pet }: PetDashboardProps) {
     useMutatePlayWithPet();
   const { mutate: mutateWorkForCoins, isPending: isWorking } =
     useMutateWorkForCoins();
+  const { mutate: mutateBegForCoins, isPending: isBegging } =
+    useMutateBegForCoins();
 
   const { mutate: mutateLetPetSleep, isPending: isSleeping } =
     useMutateLetPetSleep();
@@ -110,7 +114,7 @@ export default function PetComponent({ pet }: PetDashboardProps) {
   // --- Client-side UI Logic & Button Disabling ---
   // `isAnyActionPending` prevents the user from sending multiple transactions at once.
   const isAnyActionPending =
-    isFeeding || isPlaying || isSleeping || isWorking || isLevelingUp;
+    isFeeding || isPlaying || isSleeping || isWorking || isLevelingUp || isBegging;
 
   // These `can...` variables mirror the smart contract's rules (`assert!`) on the client-side.
   const canFeed =
@@ -130,6 +134,11 @@ export default function PetComponent({ pet }: PetDashboardProps) {
     !pet.isSleeping &&
     pet.game_data.experience >=
       pet.game_data.level * Number(gameBalance.exp_per_level);
+  const canBeg =
+    !pet.isSleeping &&
+    pet.game_data.coins < 5 &&
+    pet.stats.happiness < 20 &&
+    pet.stats.hunger < 20;
 
   return (
     <TooltipProvider>
@@ -233,6 +242,17 @@ export default function PetComponent({ pet }: PetDashboardProps) {
                 icon={<BriefcaseIcon />}
               />
             </div>
+            {canBeg && (
+              <div className="col-span-2">
+                <ActionButton
+                  onClick={() => mutateBegForCoins({ petId: pet.id })}
+                  disabled={!canBeg || isAnyActionPending}
+                  isPending={isBegging}
+                  label="Beg for Coins"
+                  icon={<HandIcon />}
+                />
+              </div>
+            )}
           </div>
           <div className="col-span-2 pt-2">
             {pet.isSleeping ? (
