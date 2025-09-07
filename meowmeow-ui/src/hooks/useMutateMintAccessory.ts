@@ -25,9 +25,10 @@ export function useMutateMintAccessory() {
       if (!currentAccount) throw new Error("No connected account");
 
       const tx = new Transaction();
-      tx.moveCall({
+      const [accessory] = tx.moveCall({
         target: `${PACKAGE_ID}::${MODULE_NAME}::mint_accessory`,
       });
+      tx.transferObjects([accessory], tx.pure.address(currentAccount.address));
 
       const { digest } = await signAndExecute({ transaction: tx });
       const response = await suiClient.waitForTransaction({
