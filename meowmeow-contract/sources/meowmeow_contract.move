@@ -14,6 +14,7 @@ const E_NO_ITEM_EQUIPPED: u64 = 106;
 const E_NOT_ENOUGH_EXP: u64 = 107;
 const E_PET_IS_ASLEEP: u64 = 108;
 const E_PET_IS_ALREADY_ASLEEP: u64 = 109;
+const E_PET_TOO_SAD: u64 = 110;
 
 // === Constants ===
 const PET_LEVEL_1_IMAGE_URL: vector<u8> = b"https://tan-kind-lizard-741.mypinata.cloud/ipfs/bafkreidkhjpthergw2tcg6u5r344shgi2cdg5afmhgpf5bv34vqfrr7hni";
@@ -79,7 +80,7 @@ fun get_game_balance(): GameBalance {
         work_energy_loss: 20,
         work_hunger_loss: 20,
         work_happiness_loss: 20,
-        work_coins_gain: 10,
+        work_coins_gain: 15,
         work_experience_gain: 15,
 
         // Sleep (rates per millisecond)
@@ -262,7 +263,7 @@ public fun work_for_coins(pet: &mut Pet) {
     let gb = get_game_balance();
 
     assert!(pet.stats.energy >= gb.work_energy_loss, E_PET_TOO_TIRED);
-    assert!(pet.stats.happiness >= gb.work_happiness_loss, E_PET_NOT_HUNGRY);
+    assert!(pet.stats.happiness >= gb.work_happiness_loss, E_PET_TOO_SAD);
     assert!(pet.stats.hunger >= gb.work_hunger_loss, E_PET_TOO_HUNGRY);
 
     pet.stats.energy = if (pet.stats.energy >= gb.work_energy_loss)
@@ -312,6 +313,54 @@ public fun beg_for_coins(pet: &mut Pet) {
         pet.game_data.coins = pet.game_data.coins + 10;
         emit_action(pet, b"begged_for_coins");
     }
+}
+
+
+// === PTB Combined Actions ===
+public fun eat_work_sleep_combo(pet: &mut Pet, clock: &Clock) {
+    let gb = get_game_balance();
+    
+    // Check initial conditions
+    assert!(!is_sleeping(pet), E_PET_IS_ASLEEP);
+    
+    // First feed the pet (check if needed and possible)
+    assert!(pet.stats.hunger < gb.max_stat, E_PET_NOT_HUNGRY);
+    assert!(pet.game_data.coins >= gb.feed_coins_cost, E_NOT_ENOUGH_COINS);
+    feed_pet(pet);
+    
+    // Then work for coins (check conditions after feeding)
+    assert!(pet.stats.energy >= gb.work_energy_loss, E_PET_TOO_TIRED);
+    assert!(pet.stats.happiness >= gb.work_happiness_loss, E_PET_TOO_SAD);
+    assert!(pet.stats.hunger >= gb.work_hunger_loss, E_PET_TOO_HUNGRY);
+    work_for_coins(pet);
+    
+    // Finally let the pet sleep
+    let_pet_sleep(pet, clock);
+    
+    emit_action(pet, b"eat_work_sleep_combo");
+}
+
+public fun wake_eat_work_combo(pet: &mut Pet, clock: &Clock) {
+    let gb = get_game_balance();
+    
+    // First wake up the pet (only if sleeping)
+    if (is_sleeping(pet)) {
+        wake_up_pet(pet, clock);
+    };
+    
+    // Then feed the pet (only if needed and possible)
+    if (pet.stats.hunger < gb.max_stat && pet.game_data.coins >= gb.feed_coins_cost) {
+        feed_pet(pet);
+    };
+    
+    // Finally work for coins (check conditions)
+    assert!(pet.stats.energy >= gb.work_energy_loss, E_PET_TOO_TIRED);
+    assert!(pet.stats.happiness >= gb.work_happiness_loss, E_PET_TOO_SAD);
+    assert!(pet.stats.hunger >= gb.work_hunger_loss, E_PET_TOO_HUNGRY);
+    
+    work_for_coins(pet);
+    
+    emit_action(pet, b"wake_eat_work_combo");
 }
 
 

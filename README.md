@@ -11,6 +11,7 @@ MeowMeow Pets is a decentralized virtual pet simulation game that allows players
 - Level up pets through experience gained from activities
 - Collect and equip accessories
 - Earn in-game coins through various activities
+- **NEW**: Execute combined actions with single-click PTB (Programmable Transaction Block) operations
 
 ## Project Structure
 
@@ -36,6 +37,7 @@ meowmeow_pets/
 - **Sleep System**: Let your pet rest to restore energy
 - **Leveling**: Gain experience and level up your pet
 - **Accessories**: Equip items like glasses to customize appearance
+- **PTB Combo Actions**: Execute multiple actions in one transaction for efficiency
 
 ### Game Economy
 
@@ -99,23 +101,23 @@ sui client publish
 
 You can use the already deployed contract on Sui testnet:
 
-**Package ID**: `0xb1d820691672e1df7a1a826d632274c199df363b230fc4f223244df8f3219e83`
+**Package ID**: `0x78d6573573f8ae65e06fb3a9c1c8abed118a99edc49d63795729bfa689cc0e05`
 
-**Contract Explorer**: [View on SuiScan](https://suiscan.xyz/testnet/object/0xb1d820691672e1df7a1a826d632274c199df363b230fc4f223244df8f3219e83/tx-blocks)
+**Contract Explorer**: [View on SuiScan](https://suiscan.xyz/testnet/object/0x78d6573573f8ae65e06fb3a9c1c8abed118a99edc49d63795729bfa689cc0e05/tx-blocks)
 
 **Created Objects**:
 
-- Pet Display: [`0x40e85fdd74f24985995f5d418193f9197335ee06d8dac72740082d3334b6e1bb`](https://suiscan.xyz/testnet/object/0x40e85fdd74f24985995f5d418193f9197335ee06d8dac72740082d3334b6e1bb)
-- Publisher: [`0xbe933f159308ca4490a6ee47e867f37d40f422f4d53bac788165a5877e3e29da`](https://suiscan.xyz/testnet/object/0xbe933f159308ca4490a6ee47e867f37d40f422f4d53bac788165a5877e3e29da)
-- Upgrade Cap: [`0xcdc667bbe208c9dc666d68b893a3a9d1ed2f905a12afc7fe18cb6fbddb0410b1`](https://suiscan.xyz/testnet/object/0xcdc667bbe208c9dc666d68b893a3a9d1ed2f905a12afc7fe18cb6fbddb0410b1)
-- PetAccessory Display: [`0xfce3941f1e895fb382259bb4c7031e9bb07d53e686f74c778f4a3bbc52a44d46`](https://suiscan.xyz/testnet/object/0xfce3941f1e895fb382259bb4c7031e9bb07d53e686f74c778f4a3bbc52a44d46)
+- Pet Display: [`0x680f9f71dc1a7c55ae2cc9f516769ac57e08ed2d7c5e9479b5687b6efb291b0a`](https://suiscan.xyz/testnet/object/0x680f9f71dc1a7c55ae2cc9f516769ac57e08ed2d7c5e9479b5687b6efb291b0a)
+- Publisher: [`0xedec62aef9bbdbd719cb0099704f68a22f94ccd4c9506e75d4fe4ee33043c64d`](https://suiscan.xyz/testnet/object/0xedec62aef9bbdbd719cb0099704f68a22f94ccd4c9506e75d4fe4ee33043c64d)
+- Upgrade Cap: [`0x24dc7cb1ca163ae0622938398560f1ac0df0931ae2761a9eb4b1454d3b019d8d`](https://suiscan.xyz/testnet/object/0x24dc7cb1ca163ae0622938398560f1ac0df0931ae2761a9eb4b1454d3b019d8d)
+- PetAccessory Display: [`0xed54831b15d856751a1600f9d9b3700caf3a649030a914c2ba00d728907ae2c0`](https://suiscan.xyz/testnet/object/0xed54831b15d856751a1600f9d9b3700caf3a649030a914c2ba00d728907ae2c0)
 
-**Transaction Digest**: `BScr39hZVYmbaiPAUTimfU1HrHkcE5Hiez58ZncWT6oG`
+**Transaction Digest**: `FoYHhdwAhu9zvDrrGozC3nLrwwnSeihRSpaRRdmVED8i`
 
 To use this contract in your frontend, update your `.env` file:
 
 ```env
-VITE_PACKAGE_ID=0xb1d820691672e1df7a1a826d632274c199df363b230fc4f223244df8f3219e83
+VITE_PACKAGE_ID=0x78d6573573f8ae65e06fb3a9c1c8abed118a99edc49d63795729bfa689cc0e05
 VITE_NETWORK=testnet
 ```
 
@@ -125,6 +127,7 @@ VITE_NETWORK=testnet
 - **Game Balance**: Configurable game parameters for balanced gameplay
 - **Events**: Emitted for all major pet actions for frontend integration
 - **Dynamic Fields**: Used for equipped items and sleep tracking
+- **PTB Operations**: Atomic multi-action transactions for enhanced user experience
 
 ## Frontend Setup
 
@@ -190,10 +193,42 @@ npm run build
 
 ### Activities
 
+#### Individual Actions
 - **Feed**: Costs 5 coins, restores 20 hunger, gains 5 experience
 - **Play**: Costs 15 energy and hunger, gains 25 happiness and 10 experience
-- **Work**: Costs 20 energy, happiness, and hunger, gains 10 coins and 15 experience
+- **Work**: Costs 20 energy, happiness, and hunger, gains 15 coins and 15 experience
 - **Sleep**: Restores energy over time, gradually decreases happiness and hunger
+
+#### PTB Combo Actions
+- **Eat → Work → Sleep**: Combines feeding, working, and sleeping in one transaction
+- **Wake → Eat → Work**: Wakes pet (if sleeping), feeds (if needed), then works
+
+These combo actions provide gas efficiency and streamlined gameplay experience.
+
+## PTB (Programmable Transaction Block) Features
+
+The latest version introduces powerful combo actions using Sui's PTB capabilities:
+
+### Smart Combo Logic
+- **Conditional Execution**: Actions only execute if conditions are met
+- **Resource Optimization**: Single transaction reduces gas costs
+- **Error Handling**: Robust validation prevents failed transactions
+
+### Available Combos
+1. **Eat → Work → Sleep Combo**
+   - Prerequisites: Pet must be awake, have coins to feed, and meet work requirements
+   - Flow: Feed pet → Work for coins → Put pet to sleep
+   - Benefits: Maximizes pet productivity in one action
+
+2. **Wake → Eat → Work Combo**  
+   - Prerequisites: Pet can be sleeping or awake, must meet work conditions
+   - Flow: Wake pet (if sleeping) → Feed (if needed) → Work for coins
+   - Benefits: Gets sleeping pets back to productive state quickly
+
+### Technical Implementation
+- Smart contract validates all conditions before execution
+- UI shows combo buttons only when all prerequisites are met
+- Atomic transactions ensure all-or-nothing execution
 
 ### Leveling System
 

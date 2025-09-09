@@ -12,6 +12,8 @@ import {
   ZapIcon,
   ChevronUpIcon,
   HandIcon,
+  ZapIcon as ComboIcon,
+  ArrowRightIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -40,6 +42,8 @@ import { useMutatePlayWithPet } from "@/hooks/useMutatePlayWithPet";
 import { useMutateWakeUpPet } from "@/hooks/useMutateWakeUpPet";
 import { useMutateWorkForCoins } from "@/hooks/useMutateWorkForCoins";
 import { useMutateBegForCoins } from "@/hooks/useMutateBegForCoins";
+import { useMutateEatWorkSleepCombo } from "@/hooks/useMutateEatWorkSleepCombo";
+import { useMutateWakeEatWorkCombo } from "@/hooks/useMutateWakeEatWorkCombo";
 import { useQueryGameBalance } from "@/hooks/useQueryGameBalance";
 
 import type { PetStruct } from "@/types/Pet";
@@ -70,6 +74,12 @@ export default function PetComponent({ pet }: PetDashboardProps) {
     useMutateWakeUpPet();
   const { mutate: mutateLevelUp, isPending: isLevelingUp } =
     useMutateCheckAndLevelUp();
+  
+  // --- Hooks for Combined Actions ---
+  const { mutate: mutateEatWorkSleepCombo, isPending: isEatWorkSleepCombo } =
+    useMutateEatWorkSleepCombo();
+  const { mutate: mutateWakeEatWorkCombo, isPending: isWakeEatWorkCombo } =
+    useMutateWakeEatWorkCombo();
 
   useEffect(() => {
     setDisplayStats(pet.stats);
@@ -114,7 +124,8 @@ export default function PetComponent({ pet }: PetDashboardProps) {
   // --- Client-side UI Logic & Button Disabling ---
   // `isAnyActionPending` prevents the user from sending multiple transactions at once.
   const isAnyActionPending =
-    isFeeding || isPlaying || isSleeping || isWorking || isLevelingUp || isBegging;
+    isFeeding || isPlaying || isSleeping || isWorking || isLevelingUp || isBegging || 
+    isEatWorkSleepCombo || isWakeEatWorkCombo;
 
   // These `can...` variables mirror the smart contract's rules (`assert!`) on the client-side.
   const canFeed =
@@ -139,6 +150,17 @@ export default function PetComponent({ pet }: PetDashboardProps) {
     pet.game_data.coins < 5 &&
     pet.stats.happiness < 20 &&
     pet.stats.hunger < 20;
+  
+  // Combined action conditions
+  const canEatWorkSleepCombo =
+    !pet.isSleeping &&
+    canFeed && canWork; // Can only do combo if both individual actions are available
+    
+  const canWakeEatWorkCombo =
+    (pet.isSleeping || !pet.isSleeping) && // Can wake up if sleeping, or proceed if awake
+    ((pet.stats.hunger < gameBalance.max_stat && pet.game_data.coins >= Number(gameBalance.feed_coins_cost)) || pet.stats.hunger >= gameBalance.work_hunger_loss) && // Either can feed OR already has enough hunger to work
+    pet.stats.energy >= gameBalance.work_energy_loss && // Has energy to work (or will have after wake up)
+    pet.stats.happiness >= gameBalance.work_happiness_loss; // Has happiness to work
 
   return (
     <TooltipProvider>
@@ -254,6 +276,31 @@ export default function PetComponent({ pet }: PetDashboardProps) {
               </div>
             )}
           </div>
+          
+          {/* Combined Action Buttons */}
+          <div className="col-span-2 space-y-2">
+            {canEatWorkSleepCombo && (
+              <ActionButton
+                onClick={() => mutateEatWorkSleepCombo({ petId: pet.id })}
+                disabled={!canEatWorkSleepCombo || isAnyActionPending}
+                isPending={isEatWorkSleepCombo}
+                label="Eat → Work → Sleep"
+                icon={<ArrowRightIcon />}
+                className="bg-purple-600 hover:bg-purple-700 text-white"
+              />
+            )}
+            {canWakeEatWorkCombo && (
+              <ActionButton
+                onClick={() => mutateWakeEatWorkCombo({ petId: pet.id })}
+                disabled={!canWakeEatWorkCombo || isAnyActionPending}
+                isPending={isWakeEatWorkCombo}
+                label="Wake → Eat → Work"
+                icon={<ComboIcon />}
+                className="bg-orange-600 hover:bg-orange-700 text-white"
+              />
+            )}
+          </div>
+          
           <div className="col-span-2 pt-2">
             {pet.isSleeping ? (
               <Button
