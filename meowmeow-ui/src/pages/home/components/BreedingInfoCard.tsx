@@ -1,5 +1,5 @@
 import React from "react";
-import { HeartIcon, InfoIcon, CheckCircleIcon, XCircleIcon, ClockIcon, PlayIcon, BriefcaseIcon, ArrowRightIcon, StarIcon, CoinsIcon, SparklesIcon, TrendingUpIcon } from "lucide-react";
+import { HeartIcon, InfoIcon, CheckCircleIcon, XCircleIcon, PlayIcon, BriefcaseIcon, StarIcon, CoinsIcon, SparklesIcon, TrendingUpIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";

@@ -168,7 +168,7 @@ export default function HomePage() {
                   </div>
 
                   {/* Breeding Info Sidebar */}
-                  {!currentActivePet.isSleeping && (
+                  {!currentActivePet.isSleeping && gameBalance && (
                     <div className="w-full lg:w-80 flex-shrink-0">
                       <BreedingInfoCard
                         pet={currentActivePet}

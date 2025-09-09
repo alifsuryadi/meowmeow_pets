@@ -17,10 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from "@/components/ui/tooltip";
 
 import { useMutateBreedPets } from "@/hooks/useMutateBreedPets";
@@ -47,10 +44,10 @@ export function BreedingPanel({ userPets, isAnyActionPending }: BreedingPanelPro
 
   if (!gameBalance) return null;
 
-  // Add safety checks for gameBalance values
-  const breedMinLevel = Number(gameBalance.breed_min_level) || 2;
-  const breedMinHappiness = Number(gameBalance.breed_min_happiness) || 70;
-  const breedCoinsCost = Number(gameBalance.breed_coins_cost) || 50;
+  // Add safety checks for gameBalance values - use fallbacks for breeding properties
+  const breedMinLevel = Number((gameBalance as any).breed_min_level) || 2;
+  const breedMinHappiness = Number((gameBalance as any).breed_min_happiness) || 70;
+  const breedCoinsCost = Number((gameBalance as any).breed_coins_cost) || 50;
 
   // Filter pets that can potentially breed (level 2+)
   const breedablePets = userPets.filter(pet => 
