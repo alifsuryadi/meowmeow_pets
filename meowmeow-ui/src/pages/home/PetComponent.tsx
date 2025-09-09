@@ -34,6 +34,7 @@ import {
 import { StatDisplay } from "./components/StatDisplay";
 import { ActionButton } from "./components/ActionButton";
 import { WardrobeManager } from "./components/Wardrobe";
+import { BreedingInfoCard } from "./components/BreedingInfoCard";
 
 import { useMutateCheckAndLevelUp } from "@/hooks/useMutateCheckLevel";
 import { useMutateFeedPet } from "@/hooks/useMutateFeedPet";
@@ -156,15 +157,21 @@ export default function PetComponent({ pet }: PetDashboardProps) {
     !pet.isSleeping &&
     canFeed && canWork; // Can only do combo if both individual actions are available
     
-  const canWakeEatWorkCombo =
-    (pet.isSleeping || !pet.isSleeping) && // Can wake up if sleeping, or proceed if awake
-    ((pet.stats.hunger < gameBalance.max_stat && pet.game_data.coins >= Number(gameBalance.feed_coins_cost)) || pet.stats.hunger >= gameBalance.work_hunger_loss) && // Either can feed OR already has enough hunger to work
-    pet.stats.energy >= gameBalance.work_energy_loss && // Has energy to work (or will have after wake up)
-    pet.stats.happiness >= gameBalance.work_happiness_loss; // Has happiness to work
+  const canWakeEatWorkCombo = (() => {
+    // If pet is sleeping, we allow the combo (it will do wake + eat, and work only if possible)
+    if (pet.isSleeping) {
+      return pet.game_data.coins >= Number(gameBalance.feed_coins_cost); // Just need coins to feed after waking
+    }
+    
+    // If pet is awake, check normal work conditions
+    return ((pet.stats.hunger < gameBalance.max_stat && pet.game_data.coins >= Number(gameBalance.feed_coins_cost)) || pet.stats.hunger >= gameBalance.work_hunger_loss) &&
+           pet.stats.energy >= gameBalance.work_energy_loss &&
+           pet.stats.happiness >= gameBalance.work_happiness_loss;
+  })();
 
   return (
     <TooltipProvider>
-      <Card className="w-full max-w-sm shadow-hard border-2 border-primary">
+      <Card className="w-full shadow-hard border-2 border-primary">
         <CardHeader className="text-center">
           <CardTitle className="text-4xl">{pet.name}</CardTitle>
           <CardDescription className="text-lg">
@@ -290,16 +297,28 @@ export default function PetComponent({ pet }: PetDashboardProps) {
               />
             )}
             {canWakeEatWorkCombo && (
-              <ActionButton
-                onClick={() => mutateWakeEatWorkCombo({ petId: pet.id })}
-                disabled={!canWakeEatWorkCombo || isAnyActionPending}
-                isPending={isWakeEatWorkCombo}
-                label="Wake → Eat → Work"
-                icon={<ComboIcon />}
-                className="bg-orange-600 hover:bg-orange-700 text-white"
-              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <ActionButton
+                      onClick={() => mutateWakeEatWorkCombo({ petId: pet.id })}
+                      disabled={!canWakeEatWorkCombo || isAnyActionPending}
+                      isPending={isWakeEatWorkCombo}
+                      label={pet.isSleeping ? "Wake → Eat → Try Work" : "Eat → Work"}
+                      icon={<ComboIcon />}
+                      className="bg-orange-600 hover:bg-orange-700 text-white"
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{pet.isSleeping 
+                    ? "Wake pet, feed if needed, then work if stats allow" 
+                    : "Feed pet then work for coins"}</p>
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
+
           
           <div className="col-span-2 pt-2">
             {pet.isSleeping ? (
