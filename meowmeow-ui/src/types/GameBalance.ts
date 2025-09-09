@@ -1,0 +1,22 @@
+export type GameBalanceStruct = {
+  max_stat: number;
+  feed_coins_cost: string;
+  feed_experience_gain: string;
+  feed_hunger_gain: number;
+  play_energy_loss: number;
+  play_hunger_loss: number;
+  play_experience_gain: string;
+  play_happiness_gain: number;
+  work_energy_loss: number;
+  work_happiness_loss: number;
+  work_hunger_loss: number;
+  work_coins_gain: string;
+  work_experience_gain: string;
+  sleep_energy_gain_ms: string;
+  sleep_hunger_loss_ms: string;
+  sleep_happiness_loss_ms: string;
+  exp_per_level: string;
+  breed_min_level?: string;
+  breed_min_happiness?: string;
+  breed_coins_cost?: string;
+};

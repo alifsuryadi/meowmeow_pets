@@ -34,7 +34,6 @@ import {
 import { StatDisplay } from "./components/StatDisplay";
 import { ActionButton } from "./components/ActionButton";
 import { WardrobeManager } from "./components/Wardrobe";
-import { BreedingInfoCard } from "./components/BreedingInfoCard";
 
 import { useMutateCheckAndLevelUp } from "@/hooks/useMutateCheckLevel";
 import { useMutateFeedPet } from "@/hooks/useMutateFeedPet";
