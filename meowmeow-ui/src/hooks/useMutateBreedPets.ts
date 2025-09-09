@@ -9,34 +9,39 @@ import { toast } from "sonner";
 
 import { queryKeyOwnedPet } from "./useQueryOwnedPet";
 import { MODULE_NAME, PACKAGE_ID } from "@/constants/contract";
-import { queryKeyEquippedAccessory } from "./useQueryEquippedAccessory";
-import { queryKeyOwnedAccessories } from "./useQueryOwnedAccessories";
 
-const mutateKeyEquipAccessory = ["mutate", "unequip-accessory"];
+const mutateKeyBreedPets = ["mutate", "breed-pets"];
 
-type UseMutateUnequipAccessory = {
-  petId: string;
+type UseMutateBreedPetsParams = {
+  parent1Id: string;
+  parent2Id: string;
+  offspringName: string;
 };
 
-export function UseMutateUnequipAccessory() {
+export function useMutateBreedPets() {
   const currentAccount = useCurrentAccount();
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const suiClient = useSuiClient();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationKey: mutateKeyEquipAccessory,
-    mutationFn: async ({ petId }: UseMutateUnequipAccessory) => {
+    mutationKey: mutateKeyBreedPets,
+    mutationFn: async ({ parent1Id, parent2Id, offspringName }: UseMutateBreedPetsParams) => {
       if (!currentAccount) throw new Error("No connected account");
 
       const tx = new Transaction();
-      const [unequippedAccessory] = tx.moveCall({
-        target: `${PACKAGE_ID}::${MODULE_NAME}::unequip_accessory`,
-        arguments: [tx.object(petId)],
+      
+      // Add the random object for randomness
+      tx.moveCall({
+        target: `${PACKAGE_ID}::${MODULE_NAME}::breed_pets`,
+        arguments: [
+          tx.object(parent1Id),
+          tx.object(parent2Id),
+          tx.pure.string(offspringName),
+          tx.object("0x6"), // Clock object
+          tx.object("0x8"), // Random object
+        ],
       });
-
-      // Transfer the unequipped accessory back to the sender
-      tx.transferObjects([unequippedAccessory], currentAccount.address);
 
       const { digest } = await signAndExecute({ transaction: tx });
       const response = await suiClient.waitForTransaction({
@@ -49,16 +54,12 @@ export function UseMutateUnequipAccessory() {
       return response;
     },
     onSuccess: (response) => {
-      toast.success(
-        `Accessory unequipped successfully! Tx: ${response.digest}`
-      );
+      toast.success(`Pets bred successfully! New offspring created. Tx: ${response.digest}`);
       queryClient.invalidateQueries({ queryKey: queryKeyOwnedPet() });
-      queryClient.invalidateQueries({ queryKey: queryKeyOwnedAccessories });
-      queryClient.invalidateQueries({ queryKey: queryKeyEquippedAccessory });
     },
     onError: (error) => {
-      console.error("Error feeding pet:", error);
-      toast.error(`Error unequipping accessory: ${error.message}`);
+      console.error("Error breeding pets:", error);
+      toast.error(`Error breeding pets: ${error.message}`);
     },
   });
 }

@@ -1,7 +1,7 @@
 module 0x0::meowmeow_contract;
 
 use std::string::{Self, String};
-use sui::{clock::Clock, display, dynamic_field, event, package};
+use sui::{clock::Clock, display, dynamic_field, event, package, random::{Random, RandomGenerator}};
 
 
 // === Errors ===
@@ -14,6 +14,11 @@ const E_NO_ITEM_EQUIPPED: u64 = 106;
 const E_NOT_ENOUGH_EXP: u64 = 107;
 const E_PET_IS_ASLEEP: u64 = 108;
 const E_PET_IS_ALREADY_ASLEEP: u64 = 109;
+const E_PET_TOO_SAD: u64 = 110;
+const E_PET_LEVEL_TOO_LOW: u64 = 111;
+const E_PET_NOT_HAPPY_ENOUGH: u64 = 112;
+const E_BREEDING_COOLDOWN: u64 = 113;
+const E_SAME_PET: u64 = 114;
 
 // === Constants ===
 const PET_LEVEL_1_IMAGE_URL: vector<u8> = b"https://tan-kind-lizard-741.mypinata.cloud/ipfs/bafkreidkhjpthergw2tcg6u5r344shgi2cdg5afmhgpf5bv34vqfrr7hni";
@@ -27,6 +32,7 @@ const ACCESSORY_GLASSES_IMAGE_URL: vector<u8> = b"https://tan-kind-lizard-741.my
 
 const EQUIPPED_ITEM_KEY: vector<u8> = b"equipped_item";
 const SLEEP_STARTED_AT_KEY: vector<u8> = b"sleep_started_at";
+const LAST_BRED_AT_KEY: vector<u8> = b"last_bred_at";
 
 
 // === Game Balance ===
@@ -58,6 +64,12 @@ public struct GameBalance has copy, drop {
 
     // Level settings
     exp_per_level: u64,
+
+    // Breeding settings
+    breed_coins_cost: u64,
+    breed_min_level: u8,
+    breed_min_happiness: u8,
+    breed_cooldown_ms: u64, // 24 hours in milliseconds
 }
 
 fun get_game_balance(): GameBalance {
@@ -79,7 +91,7 @@ fun get_game_balance(): GameBalance {
         work_energy_loss: 20,
         work_hunger_loss: 20,
         work_happiness_loss: 20,
-        work_coins_gain: 10,
+        work_coins_gain: 25,
         work_experience_gain: 15,
 
         // Sleep (rates per millisecond)
@@ -89,6 +101,12 @@ fun get_game_balance(): GameBalance {
 
         // Level
         exp_per_level: 100,
+
+        // Breeding
+        breed_coins_cost: 50,     // Cost per pet (total 100 coins)
+        breed_min_level: 2,       // Minimum level 2
+        breed_min_happiness: 70,  // Minimum 70 happiness
+        breed_cooldown_ms: 86400000, // 24 hours in milliseconds
     }
 }
 
@@ -136,6 +154,14 @@ public struct PetAction has copy, drop {
     energy: u8,
     happiness: u8,
     hunger: u8
+}
+
+public struct PetBred has copy, drop {
+    parent1_id: ID,
+    parent2_id: ID,
+    offspring_id: ID,
+    offspring_name: String,
+    bred_at: u64
 }
 
 fun init(witness: MEOWMEOW_CONTRACT, ctx: &mut TxContext) {
@@ -262,7 +288,7 @@ public fun work_for_coins(pet: &mut Pet) {
     let gb = get_game_balance();
 
     assert!(pet.stats.energy >= gb.work_energy_loss, E_PET_TOO_TIRED);
-    assert!(pet.stats.happiness >= gb.work_happiness_loss, E_PET_NOT_HUNGRY);
+    assert!(pet.stats.happiness >= gb.work_happiness_loss, E_PET_TOO_SAD);
     assert!(pet.stats.hunger >= gb.work_hunger_loss, E_PET_TOO_HUNGRY);
 
     pet.stats.energy = if (pet.stats.energy >= gb.work_energy_loss)
@@ -311,6 +337,200 @@ public fun beg_for_coins(pet: &mut Pet) {
     if (pet.game_data.coins < 5 && pet.stats.happiness < 20 && pet.stats.hunger < 20) {
         pet.game_data.coins = pet.game_data.coins + 10;
         emit_action(pet, b"begged_for_coins");
+    }
+}
+
+
+// === PTB Combined Actions ===
+public fun eat_work_sleep_combo(pet: &mut Pet, clock: &Clock) {
+    let gb = get_game_balance();
+    
+    // Check initial conditions
+    assert!(!is_sleeping(pet), E_PET_IS_ASLEEP);
+    
+    // First feed the pet (check if needed and possible)
+    assert!(pet.stats.hunger < gb.max_stat, E_PET_NOT_HUNGRY);
+    assert!(pet.game_data.coins >= gb.feed_coins_cost, E_NOT_ENOUGH_COINS);
+    feed_pet(pet);
+    
+    // Then work for coins (check conditions after feeding)
+    assert!(pet.stats.energy >= gb.work_energy_loss, E_PET_TOO_TIRED);
+    assert!(pet.stats.happiness >= gb.work_happiness_loss, E_PET_TOO_SAD);
+    assert!(pet.stats.hunger >= gb.work_hunger_loss, E_PET_TOO_HUNGRY);
+    work_for_coins(pet);
+    
+    // Finally let the pet sleep
+    let_pet_sleep(pet, clock);
+    
+    emit_action(pet, b"eat_work_sleep_combo");
+}
+
+public fun wake_eat_work_combo(pet: &mut Pet, clock: &Clock) {
+    let gb = get_game_balance();
+    
+    // First wake up the pet (only if sleeping)
+    if (is_sleeping(pet)) {
+        wake_up_pet(pet, clock);
+    };
+    
+    // Then feed the pet (only if needed and possible)
+    if (pet.stats.hunger < gb.max_stat && pet.game_data.coins >= gb.feed_coins_cost) {
+        feed_pet(pet);
+    };
+    
+    // Check if pet can work after waking up and feeding
+    // Only work if all conditions are met, otherwise just complete wake/feed actions
+    if (pet.stats.energy >= gb.work_energy_loss &&
+        pet.stats.happiness >= gb.work_happiness_loss &&
+        pet.stats.hunger >= gb.work_hunger_loss) {
+        work_for_coins(pet);
+        emit_action(pet, b"wake_eat_work_combo");
+    } else {
+        // Pet can't work, but wake and feed were successful
+        emit_action(pet, b"wake_eat_partial");
+    };
+}
+
+
+// === Breeding System ===
+public fun breed_pets(
+    parent1: &mut Pet,
+    parent2: &mut Pet,
+    offspring_name: String,
+    clock: &Clock,
+    random: &Random,
+    ctx: &mut TxContext
+): Pet {
+    let gb = get_game_balance();
+    let current_time = clock.timestamp_ms();
+    
+    // Validate that pets are different
+    assert!(object::id(parent1) != object::id(parent2), E_SAME_PET);
+    
+    // Check breeding conditions for both parents
+    validate_breeding_conditions(parent1, &gb, current_time);
+    validate_breeding_conditions(parent2, &gb, current_time);
+    
+    // Pay breeding costs for both parents
+    parent1.game_data.coins = parent1.game_data.coins - gb.breed_coins_cost;
+    parent2.game_data.coins = parent2.game_data.coins - gb.breed_coins_cost;
+    
+    // Set breeding cooldown for both parents
+    let cooldown_key = string::utf8(LAST_BRED_AT_KEY);
+    if (dynamic_field::exists_<String>(&parent1.id, cooldown_key)) {
+        *dynamic_field::borrow_mut<String, u64>(&mut parent1.id, cooldown_key) = current_time;
+    } else {
+        dynamic_field::add(&mut parent1.id, cooldown_key, current_time);
+    };
+    
+    if (dynamic_field::exists_<String>(&parent2.id, cooldown_key)) {
+        *dynamic_field::borrow_mut<String, u64>(&mut parent2.id, cooldown_key) = current_time;
+    } else {
+        dynamic_field::add(&mut parent2.id, cooldown_key, current_time);
+    };
+    
+    // Generate offspring stats (average of parents + random bonus)
+    let mut generator = random.new_generator(ctx);
+    let offspring_stats = generate_offspring_stats(parent1, parent2, &mut generator);
+    
+    // Create offspring
+    let offspring = Pet {
+        id: object::new(ctx),
+        name: offspring_name,
+        image_url: string::utf8(PET_LEVEL_1_IMAGE_URL),
+        adopted_at: current_time,
+        stats: offspring_stats,
+        game_data: PetGameData {
+            coins: 10, // Start with 10 coins
+            experience: 0,
+            level: 1
+        }
+    };
+    
+    // Emit breeding event
+    event::emit(PetBred {
+        parent1_id: object::id(parent1),
+        parent2_id: object::id(parent2),
+        offspring_id: object::id(&offspring),
+        offspring_name: offspring.name,
+        bred_at: current_time
+    });
+    
+    offspring
+}
+
+fun validate_breeding_conditions(pet: &Pet, gb: &GameBalance, current_time: u64) {
+    // Pet must not be sleeping
+    assert!(!is_sleeping(pet), E_PET_IS_ASLEEP);
+    
+    // Pet must be at least level 2
+    assert!(pet.game_data.level >= gb.breed_min_level, E_PET_LEVEL_TOO_LOW);
+    
+    // Pet must have enough happiness
+    assert!(pet.stats.happiness >= gb.breed_min_happiness, E_PET_NOT_HAPPY_ENOUGH);
+    
+    // Pet must have enough coins
+    assert!(pet.game_data.coins >= gb.breed_coins_cost, E_NOT_ENOUGH_COINS);
+    
+    // Check breeding cooldown
+    let cooldown_key = string::utf8(LAST_BRED_AT_KEY);
+    if (dynamic_field::exists_<String>(&pet.id, cooldown_key)) {
+        let last_bred_at = *dynamic_field::borrow<String, u64>(&pet.id, cooldown_key);
+        let time_since_breed = current_time - last_bred_at;
+        assert!(time_since_breed >= gb.breed_cooldown_ms, E_BREEDING_COOLDOWN);
+    };
+}
+
+fun generate_offspring_stats(parent1: &Pet, parent2: &Pet, generator: &mut RandomGenerator): PetStats {
+    // Calculate average stats from parents
+    let avg_energy = ((parent1.stats.energy as u16) + (parent2.stats.energy as u16)) / 2;
+    let avg_happiness = ((parent1.stats.happiness as u16) + (parent2.stats.happiness as u16)) / 2;
+    let avg_hunger = ((parent1.stats.hunger as u16) + (parent2.stats.hunger as u16)) / 2;
+    
+    // Add random variation (-10 to +10)
+    let energy_variation = (generator.generate_u8() % 21); // 0 to 20
+    let happiness_variation = (generator.generate_u8() % 21);
+    let hunger_variation = (generator.generate_u8() % 21);
+    
+    // Apply variations safely
+    let final_energy = if (energy_variation > 10) {
+        clamp_stat_add(avg_energy, energy_variation - 10)
+    } else {
+        clamp_stat_sub(avg_energy, 10 - energy_variation)
+    };
+    
+    let final_happiness = if (happiness_variation > 10) {
+        clamp_stat_add(avg_happiness, happiness_variation - 10)
+    } else {
+        clamp_stat_sub(avg_happiness, 10 - happiness_variation)
+    };
+    
+    let final_hunger = if (hunger_variation > 10) {
+        clamp_stat_add(avg_hunger, hunger_variation - 10)
+    } else {
+        clamp_stat_sub(avg_hunger, 10 - hunger_variation)
+    };
+    
+    PetStats {
+        energy: final_energy,
+        happiness: final_happiness,
+        hunger: final_hunger,
+    }
+}
+
+fun clamp_stat_add(base: u16, bonus: u8): u8 {
+    let result = base + (bonus as u16);
+    if (result > 100) 100
+    else (result as u8)
+}
+
+fun clamp_stat_sub(base: u16, penalty: u8): u8 {
+    let penalty_u16 = penalty as u16;
+    if (base <= penalty_u16) 1
+    else {
+        let result = base - penalty_u16;
+        if (result < 1) 1
+        else (result as u8)
     }
 }
 
@@ -464,6 +684,50 @@ public fun get_pet_game_data(pet: &Pet): (u64, u64, u8) {
 public fun is_sleeping(pet: &Pet): bool {
     let key = string::utf8(SLEEP_STARTED_AT_KEY);
     dynamic_field::exists_<String>(&pet.id, key)
+}
+
+public fun can_breed(pet: &Pet, clock: &Clock): bool {
+    let gb = get_game_balance();
+    let current_time = clock.timestamp_ms();
+    
+    // Check basic requirements
+    if (is_sleeping(pet) ||
+        pet.game_data.level < gb.breed_min_level ||
+        pet.stats.happiness < gb.breed_min_happiness ||
+        pet.game_data.coins < gb.breed_coins_cost) {
+        return false
+    };
+    
+    // Check breeding cooldown
+    let cooldown_key = string::utf8(LAST_BRED_AT_KEY);
+    if (dynamic_field::exists_<String>(&pet.id, cooldown_key)) {
+        let last_bred_at = *dynamic_field::borrow<String, u64>(&pet.id, cooldown_key);
+        let time_since_breed = current_time - last_bred_at;
+        if (time_since_breed < gb.breed_cooldown_ms) {
+            return false
+        };
+    };
+    
+    true
+}
+
+public fun get_breeding_cooldown_remaining(pet: &Pet, clock: &Clock): u64 {
+    let gb = get_game_balance();
+    let current_time = clock.timestamp_ms();
+    let cooldown_key = string::utf8(LAST_BRED_AT_KEY);
+    
+    if (!dynamic_field::exists_<String>(&pet.id, cooldown_key)) {
+        return 0 // No cooldown
+    };
+    
+    let last_bred_at = *dynamic_field::borrow<String, u64>(&pet.id, cooldown_key);
+    let time_since_breed = current_time - last_bred_at;
+    
+    if (time_since_breed >= gb.breed_cooldown_ms) {
+        0 // Cooldown expired
+    } else {
+        gb.breed_cooldown_ms - time_since_breed // Remaining time
+    }
 }
 
 

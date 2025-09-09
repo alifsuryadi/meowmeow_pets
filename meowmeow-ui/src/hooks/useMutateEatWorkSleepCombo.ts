@@ -9,34 +9,29 @@ import { toast } from "sonner";
 
 import { queryKeyOwnedPet } from "./useQueryOwnedPet";
 import { MODULE_NAME, PACKAGE_ID } from "@/constants/contract";
-import { queryKeyEquippedAccessory } from "./useQueryEquippedAccessory";
-import { queryKeyOwnedAccessories } from "./useQueryOwnedAccessories";
 
-const mutateKeyEquipAccessory = ["mutate", "unequip-accessory"];
+const mutateKeyEatWorkSleepCombo = ["mutate", "eat-work-sleep-combo"];
 
-type UseMutateUnequipAccessory = {
+type UseMutateEatWorkSleepComboParams = {
   petId: string;
 };
 
-export function UseMutateUnequipAccessory() {
+export function useMutateEatWorkSleepCombo() {
   const currentAccount = useCurrentAccount();
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const suiClient = useSuiClient();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationKey: mutateKeyEquipAccessory,
-    mutationFn: async ({ petId }: UseMutateUnequipAccessory) => {
+    mutationKey: mutateKeyEatWorkSleepCombo,
+    mutationFn: async ({ petId }: UseMutateEatWorkSleepComboParams) => {
       if (!currentAccount) throw new Error("No connected account");
 
       const tx = new Transaction();
-      const [unequippedAccessory] = tx.moveCall({
-        target: `${PACKAGE_ID}::${MODULE_NAME}::unequip_accessory`,
-        arguments: [tx.object(petId)],
+      tx.moveCall({
+        target: `${PACKAGE_ID}::${MODULE_NAME}::eat_work_sleep_combo`,
+        arguments: [tx.object(petId), tx.object("0x6")],
       });
-
-      // Transfer the unequipped accessory back to the sender
-      tx.transferObjects([unequippedAccessory], currentAccount.address);
 
       const { digest } = await signAndExecute({ transaction: tx });
       const response = await suiClient.waitForTransaction({
@@ -49,16 +44,12 @@ export function UseMutateUnequipAccessory() {
       return response;
     },
     onSuccess: (response) => {
-      toast.success(
-        `Accessory unequipped successfully! Tx: ${response.digest}`
-      );
+      toast.success(`Pet fed, worked, and went to sleep! Tx: ${response.digest}`);
       queryClient.invalidateQueries({ queryKey: queryKeyOwnedPet() });
-      queryClient.invalidateQueries({ queryKey: queryKeyOwnedAccessories });
-      queryClient.invalidateQueries({ queryKey: queryKeyEquippedAccessory });
     },
     onError: (error) => {
-      console.error("Error feeding pet:", error);
-      toast.error(`Error unequipping accessory: ${error.message}`);
+      console.error("Error with eat-work-sleep combo:", error);
+      toast.error(`Error with combo action: ${error.message}`);
     },
   });
 }

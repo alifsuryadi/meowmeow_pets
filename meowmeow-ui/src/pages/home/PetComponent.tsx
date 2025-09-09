@@ -12,6 +12,8 @@ import {
   ZapIcon,
   ChevronUpIcon,
   HandIcon,
+  ZapIcon as ComboIcon,
+  ArrowRightIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,6 +34,7 @@ import {
 import { StatDisplay } from "./components/StatDisplay";
 import { ActionButton } from "./components/ActionButton";
 import { WardrobeManager } from "./components/Wardrobe";
+import { BreedingInfoCard } from "./components/BreedingInfoCard";
 
 import { useMutateCheckAndLevelUp } from "@/hooks/useMutateCheckLevel";
 import { useMutateFeedPet } from "@/hooks/useMutateFeedPet";
@@ -40,6 +43,8 @@ import { useMutatePlayWithPet } from "@/hooks/useMutatePlayWithPet";
 import { useMutateWakeUpPet } from "@/hooks/useMutateWakeUpPet";
 import { useMutateWorkForCoins } from "@/hooks/useMutateWorkForCoins";
 import { useMutateBegForCoins } from "@/hooks/useMutateBegForCoins";
+import { useMutateEatWorkSleepCombo } from "@/hooks/useMutateEatWorkSleepCombo";
+import { useMutateWakeEatWorkCombo } from "@/hooks/useMutateWakeEatWorkCombo";
 import { useQueryGameBalance } from "@/hooks/useQueryGameBalance";
 
 import type { PetStruct } from "@/types/Pet";
@@ -70,6 +75,12 @@ export default function PetComponent({ pet }: PetDashboardProps) {
     useMutateWakeUpPet();
   const { mutate: mutateLevelUp, isPending: isLevelingUp } =
     useMutateCheckAndLevelUp();
+  
+  // --- Hooks for Combined Actions ---
+  const { mutate: mutateEatWorkSleepCombo, isPending: isEatWorkSleepCombo } =
+    useMutateEatWorkSleepCombo();
+  const { mutate: mutateWakeEatWorkCombo, isPending: isWakeEatWorkCombo } =
+    useMutateWakeEatWorkCombo();
 
   useEffect(() => {
     setDisplayStats(pet.stats);
@@ -114,7 +125,8 @@ export default function PetComponent({ pet }: PetDashboardProps) {
   // --- Client-side UI Logic & Button Disabling ---
   // `isAnyActionPending` prevents the user from sending multiple transactions at once.
   const isAnyActionPending =
-    isFeeding || isPlaying || isSleeping || isWorking || isLevelingUp || isBegging;
+    isFeeding || isPlaying || isSleeping || isWorking || isLevelingUp || isBegging || 
+    isEatWorkSleepCombo || isWakeEatWorkCombo;
 
   // These `can...` variables mirror the smart contract's rules (`assert!`) on the client-side.
   const canFeed =
@@ -139,10 +151,27 @@ export default function PetComponent({ pet }: PetDashboardProps) {
     pet.game_data.coins < 5 &&
     pet.stats.happiness < 20 &&
     pet.stats.hunger < 20;
+  
+  // Combined action conditions
+  const canEatWorkSleepCombo =
+    !pet.isSleeping &&
+    canFeed && canWork; // Can only do combo if both individual actions are available
+    
+  const canWakeEatWorkCombo = (() => {
+    // If pet is sleeping, we allow the combo (it will do wake + eat, and work only if possible)
+    if (pet.isSleeping) {
+      return pet.game_data.coins >= Number(gameBalance.feed_coins_cost); // Just need coins to feed after waking
+    }
+    
+    // If pet is awake, check normal work conditions
+    return ((pet.stats.hunger < gameBalance.max_stat && pet.game_data.coins >= Number(gameBalance.feed_coins_cost)) || pet.stats.hunger >= gameBalance.work_hunger_loss) &&
+           pet.stats.energy >= gameBalance.work_energy_loss &&
+           pet.stats.happiness >= gameBalance.work_happiness_loss;
+  })();
 
   return (
     <TooltipProvider>
-      <Card className="w-full max-w-sm shadow-hard border-2 border-primary">
+      <Card className="w-full shadow-hard border-2 border-primary">
         <CardHeader className="text-center">
           <CardTitle className="text-4xl">{pet.name}</CardTitle>
           <CardDescription className="text-lg">
@@ -254,6 +283,43 @@ export default function PetComponent({ pet }: PetDashboardProps) {
               </div>
             )}
           </div>
+          
+          {/* Combined Action Buttons */}
+          <div className="col-span-2 space-y-2">
+            {canEatWorkSleepCombo && (
+              <ActionButton
+                onClick={() => mutateEatWorkSleepCombo({ petId: pet.id })}
+                disabled={!canEatWorkSleepCombo || isAnyActionPending}
+                isPending={isEatWorkSleepCombo}
+                label="Eat → Work → Sleep"
+                icon={<ArrowRightIcon />}
+                className="bg-purple-600 hover:bg-purple-700 text-white"
+              />
+            )}
+            {canWakeEatWorkCombo && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <ActionButton
+                      onClick={() => mutateWakeEatWorkCombo({ petId: pet.id })}
+                      disabled={!canWakeEatWorkCombo || isAnyActionPending}
+                      isPending={isWakeEatWorkCombo}
+                      label={pet.isSleeping ? "Wake → Eat → Try Work" : "Eat → Work"}
+                      icon={<ComboIcon />}
+                      className="bg-orange-600 hover:bg-orange-700 text-white"
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{pet.isSleeping 
+                    ? "Wake pet, feed if needed, then work if stats allow" 
+                    : "Feed pet then work for coins"}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+
+          
           <div className="col-span-2 pt-2">
             {pet.isSleeping ? (
               <Button
